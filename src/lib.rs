@@ -159,6 +159,14 @@ impl Renderer for Image {
         &mut self.data
     }
 
+    fn update(&mut self) -> bool {
+        false
+    }
+
+    fn update_rects(&mut self, _rects: &[(i32, i32, u32, u32)]) -> bool {
+        false
+    }
+
     fn sync(&mut self) -> bool {
         true
     }
