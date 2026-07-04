@@ -7,7 +7,6 @@ extern crate image;
 
 use std::{cmp, slice};
 use std::path::Path;
-use std::error::Error;
 use std::cell::Cell;
 
 use orbclient::{Color, Renderer, Mode};
@@ -72,9 +71,9 @@ impl Image {
     }
 
     fn from_dynamic_image(d_img: image::ImageResult<image::DynamicImage>) -> Result<Self, String> {
-        let img = d_img.map_err(|e| e.description().to_string())?.to_rgba();
+        let img = d_img.map_err(|e| e.to_string())?.to_rgba8();
         let data: Vec<_> = img.pixels().map(
-            |p| Color::rgba(p.data[0], p.data[1], p.data[2], p.data[3])
+            |p| Color::rgba(p.0[0], p.0[1], p.0[2], p.0[3])
             ).collect();
         Self::from_data(img.width(), img.height(), data.into_boxed_slice())
 
@@ -96,17 +95,17 @@ impl Image {
         let mut dst_color = vec![Color { data: 0 }; w as usize * h as usize].into_boxed_slice();
 
         let src = unsafe {
-            slice::from_raw_parts(self.data.as_ptr() as *const u8, self.data.len() * 4)
+            slice::from_raw_parts(self.data.as_ptr() as *const rgb::RGBA<u8>, self.data.len())
         };
 
-        let mut dst = unsafe {
-            slice::from_raw_parts_mut(dst_color.as_mut_ptr() as *mut u8, dst_color.len() * 4)
+        let dst = unsafe {
+            slice::from_raw_parts_mut(dst_color.as_mut_ptr() as *mut rgb::RGBA<u8>, dst_color.len())
         };
 
         let mut resizer = resize::new(self.w as usize, self.h as usize,
                                       w as usize, h as usize,
-                                      resize::Pixel::RGBA, resize_type);
-        resizer.resize(&src, &mut dst);
+                                      resize::Pixel::RGBA8, resize_type).map_err(|e| e.to_string())?;
+        resizer.resize(src, dst).map_err(|e| e.to_string())?;
 
         Image::from_data(w, h, dst_color)
     }
@@ -177,16 +176,16 @@ impl Renderer for Image {
 }
 
 pub fn parse_png(data: &[u8]) -> Result<Image, String> {
-    let img = image::load_from_memory_with_format(data, image::ImageFormat::PNG);
+    let img = image::load_from_memory_with_format(data, image::ImageFormat::Png);
     Image::from_dynamic_image(img)
 }
 
 pub fn parse_bmp(data: &[u8]) -> Result<Image, String> {
-    let img = image::load_from_memory_with_format(data, image::ImageFormat::BMP);
+    let img = image::load_from_memory_with_format(data, image::ImageFormat::Bmp);
     Image::from_dynamic_image(img)
 }
 
 pub fn parse_jpg(data: &[u8]) -> Result<Image, String> {
-    let img = image::load_from_memory_with_format(data, image::ImageFormat::JPEG);
+    let img = image::load_from_memory_with_format(data, image::ImageFormat::Jpeg);
     Image::from_dynamic_image(img)
 }
